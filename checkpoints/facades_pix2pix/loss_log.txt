@@ -1,0 +1,9 @@
+================ Training Loss (Thu Sep  1 21:31:13 2022) ================
+(epoch: 1, iters: 100, time: 0.038, data: 0.236) G_GAN: 1.339 G_L1: 35.491 D_real: 0.776 D_fake: 0.358 
+(epoch: 1, iters: 200, time: 0.036, data: 0.002) G_GAN: 2.484 G_L1: 39.039 D_real: 0.125 D_fake: 0.229 
+(epoch: 1, iters: 300, time: 0.037, data: 0.002) G_GAN: 3.397 G_L1: 36.045 D_real: 0.056 D_fake: 0.138 
+(epoch: 1, iters: 400, time: 0.296, data: 0.002) G_GAN: 2.352 G_L1: 24.749 D_real: 0.256 D_fake: 0.606 
+(epoch: 2, iters: 100, time: 0.038, data: 0.203) G_GAN: 3.933 G_L1: 43.322 D_real: 0.027 D_fake: 0.325 
+(epoch: 2, iters: 200, time: 0.037, data: 0.002) G_GAN: 3.055 G_L1: 50.457 D_real: 0.022 D_fake: 0.080 
+================ Training Loss (Thu Sep  1 21:43:14 2022) ================
+(epoch: 1, iters: 100, time: 0.037, data: 0.188) G_GAN: 2.247 G_L1: 36.666 D_real: 0.121 D_fake: 0.204 
