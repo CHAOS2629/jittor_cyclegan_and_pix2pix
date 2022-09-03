@@ -4,7 +4,8 @@ We modify the official PyTorch image folder (https://github.com/pytorch/vision/b
 so that this class can load images from both current directory and its subdirectories.
 """
 
-import torch.utils.data as data
+# import torch.utils.data as data
+import jittor.dataset as dataset
 
 from PIL import Image
 import os
@@ -36,7 +37,7 @@ def default_loader(path):
     return Image.open(path).convert('RGB')
 
 
-class ImageFolder(data.Dataset):
+class ImageFolder(dataset.Dataset):
 
     def __init__(self, root, transform=None, return_paths=False,
                  loader=default_loader):

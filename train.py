@@ -23,7 +23,6 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
-import torch
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
@@ -33,10 +32,6 @@ if __name__ == '__main__':
 
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
-    print(model.netG)
-    torch.save(model.netG.state_dict(), "/home/pzh/Jitor_Compare/pytorch-CycleGAN-and-pix2pix/models/netG.pth")
-    torch.save(model.netD.state_dict(), "/home/pzh/Jitor_Compare/pytorch-CycleGAN-and-pix2pix/models/netD.pth")
-    # print(type(model))
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = 0                # the total number of training iterations
 

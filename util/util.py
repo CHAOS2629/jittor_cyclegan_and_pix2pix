@@ -1,6 +1,7 @@
 """This module contains simple helper functions """
 from __future__ import print_function
-import torch
+# import torch
+import jittor
 import numpy as np
 from PIL import Image
 import os
@@ -14,7 +15,7 @@ def tensor2im(input_image, imtype=np.uint8):
         imtype (type)        --  the desired type of the converted numpy array
     """
     if not isinstance(input_image, np.ndarray):
-        if isinstance(input_image, torch.Tensor):  # get the data from a variable
+        if isinstance(input_image, jittor.Var):  # get the data from a variable  #改动？？？
             image_tensor = input_image.data
         else:
             return input_image
@@ -38,7 +39,7 @@ def diagnose_network(net, name='network'):
     count = 0
     for param in net.parameters():
         if param.grad is not None:
-            mean += torch.mean(torch.abs(param.grad.data))
+            mean += jittor.mean(jittor.abs(param.grad.data))
             count += 1
     if count > 0:
         mean = mean / count
