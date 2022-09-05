@@ -67,7 +67,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def excute(self):
+    def execute(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         pass
 
@@ -103,7 +103,7 @@ class BaseModel(ABC):
         It also calls <compute_visuals> to produce additional visualization results
         """
         with jt.no_grad():
-            self.excute()
+            self.execute()
             self.compute_visuals()
 
     def compute_visuals(self):

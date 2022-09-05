@@ -56,5 +56,4 @@
          update_html_freq: 1000                          
                 use_wandb: True                          	[default: False]
                   verbose: False                         
-       wandb_project_name: CycleGAN-and-pix2pix          
 ----------------- End -------------------

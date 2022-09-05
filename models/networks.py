@@ -29,7 +29,7 @@ def get_norm_layer(norm_type='instance'):
     For InstanceNorm, we do not use learnable affine parameters. We do not track running statistics.
     """
     if norm_type == 'batch':
-        norm_layer = functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True)
+        norm_layer = functools.partial(nn.BatchNorm2d, affine=True)#, track_running_stats=True jt没这玩意儿
     elif norm_type == 'instance':
         norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=False)
     elif norm_type == 'none':
@@ -84,20 +84,20 @@ def init_weights(net, init_type='normal', init_gain=0.02):
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
             if init_type == 'normal':
-                init.gauss_(m.weight.data, 0.0, init_gain)
+                init.gauss_(m.weight, 0.0, init_gain)
             elif init_type == 'xavier':
-                init.xavier_gauss_(m.weight.data, gain=init_gain)
+                init.xavier_gauss_(m.weight, gain=init_gain)
             elif init_type == 'kaiming':
-                init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+                init.kaiming_normal_(m.weight, a=0, mode='fan_in')
             elif init_type == 'orthogonal':
-                init.orthogonal_(m.weight.data, gain=init_gain)#jittor有这玩意儿不
+                init.orthogonal_(m.weight, gain=init_gain)#jittor有这玩意儿不
             else:
                 raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
             if hasattr(m, 'bias') and m.bias is not None:
-                init.constant_(m.bias.data, 0.0)
+                init.constant_(m.bias, 0.0)
         elif classname.find('BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
-            init.gauss_(m.weight.data, 1.0, init_gain)
-            init.constant_(m.bias.data, 0.0)
+            init.gauss_(m.weight, 1.0, init_gain)
+            init.constant_(m.bias, 0.0)
 
     print('initialize network with %s' % init_type)
     net.apply(init_func)  # apply the initialization function <init_func>
@@ -230,8 +230,8 @@ class GANLoss(nn.Module):
         LSGAN needs no sigmoid. vanilla GANs will handle it with BCEWithLogitsLoss.
         """
         super(GANLoss, self).__init__()
-        self.register_buffer('real_label', torch.tensor(target_real_label))
-        self.register_buffer('fake_label', torch.tensor(target_fake_label))
+        self.real_label=jt.array(target_real_label)
+        self.fake_label=jt.array(target_fake_label)
         self.gan_mode = gan_mode
         if gan_mode == 'lsgan':
             self.loss = nn.MSELoss()
@@ -300,15 +300,15 @@ def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', const
         elif type == 'fake':
             interpolatesv = fake_data
         elif type == 'mixed':
-            alpha = torch.rand(real_data.shape[0], 1, device=device)
+            alpha = jt.rand(real_data.shape[0], 1)#, device=device 不需要指定device
             alpha = alpha.expand(real_data.shape[0], real_data.nelement() // real_data.shape[0]).contiguous().view(*real_data.shape)
             interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
         else:
             raise NotImplementedError('{} not implemented'.format(type))
         interpolatesv.requires_grad_(True)
         disc_interpolates = netD(interpolatesv)
-        gradients = torch.autograd.grad(outputs=disc_interpolates, inputs=interpolatesv,
-                                        grad_outputs=torch.ones(disc_interpolates.size()).to(device),
+        gradients = jt.grad(outputs=disc_interpolates, inputs=interpolatesv,
+                                        grad_outputs=jt.ones(disc_interpolates.size()).to(device),
                                         create_graph=True, retain_graph=True, only_inputs=True)
         gradients = gradients[0].view(real_data.size(0), -1)  # flat the data
         gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - constant) ** 2).mean() * lambda_gp        # added eps
@@ -345,14 +345,14 @@ class ResnetGenerator(nn.Module):
         model = [nn.ReflectionPad2d(3),
                  nn.Conv2d(input_nc, ngf, kernel_size=7, padding=0, bias=use_bias),
                  norm_layer(ngf),
-                 nn.ReLU(True)]
+                 nn.ReLU()]
 
         n_downsampling = 2
         for i in range(n_downsampling):  # add downsampling layers
             mult = 2 ** i
             model += [nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1, bias=use_bias),
                       norm_layer(ngf * mult * 2),
-                      nn.ReLU(True)]
+                      nn.ReLU()]
 
         mult = 2 ** n_downsampling
         for i in range(n_blocks):       # add ResNet blocks
@@ -366,15 +366,15 @@ class ResnetGenerator(nn.Module):
                                          padding=1, output_padding=1,
                                          bias=use_bias),
                       norm_layer(int(ngf * mult / 2)),
-                      nn.ReLU(True)]
+                      nn.ReLU()]
         model += [nn.ReflectionPad2d(3)]
         model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=0)]
         model += [nn.Tanh()]
 
         self.model = nn.Sequential(*model)
 
-    def forward(self, input):
-        """Standard forward"""
+    def execute(self, input):
+        """Standard execute"""
         return self.model(input)
 
 
@@ -386,7 +386,7 @@ class ResnetBlock(nn.Module):
 
         A resnet block is a conv block with skip connections
         We construct a conv block with build_conv_block function,
-        and implement skip connections in <forward> function.
+        and implement skip connections in <execute> function.
         Original Resnet paper: https://arxiv.org/pdf/1512.03385.pdf
         """
         super(ResnetBlock, self).__init__()
@@ -415,7 +415,7 @@ class ResnetBlock(nn.Module):
         else:
             raise NotImplementedError('padding [%s] is not implemented' % padding_type)
 
-        conv_block += [nn.Conv2d(dim, dim, kernel_size=3, padding=p, bias=use_bias), norm_layer(dim), nn.ReLU(True)]
+        conv_block += [nn.Conv2d(dim, dim, kernel_size=3, padding=p, bias=use_bias), norm_layer(dim), nn.ReLU()]
         if use_dropout:
             conv_block += [nn.Dropout(0.5)]
 
@@ -432,8 +432,8 @@ class ResnetBlock(nn.Module):
 
         return nn.Sequential(*conv_block)
 
-    def forward(self, x):
-        """Forward function (with skip connections)"""
+    def execute(self, x):
+        """execute function (with skip connections)"""
         out = x + self.conv_block(x)  # add skip connections
         return out
 
@@ -465,8 +465,8 @@ class UnetGenerator(nn.Module):
         unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
         self.model = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm_layer=norm_layer)  # add the outermost layer
 
-    def forward(self, input):
-        """Standard forward"""
+    def execute(self, input):
+        """Standard execute"""
         return self.model(input)
 
 
@@ -500,9 +500,9 @@ class UnetSkipConnectionBlock(nn.Module):
             input_nc = outer_nc
         downconv = nn.Conv2d(input_nc, inner_nc, kernel_size=4,
                              stride=2, padding=1, bias=use_bias)
-        downrelu = nn.LeakyReLU(0.2, True)
+        downrelu = nn.LeakyReLU(0.2)
         downnorm = norm_layer(inner_nc)
-        uprelu = nn.ReLU(True)
+        uprelu = nn.ReLU()
         upnorm = norm_layer(outer_nc)
 
         if outermost:
@@ -533,11 +533,11 @@ class UnetSkipConnectionBlock(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-    def forward(self, x):
+    def execute(self, x):
         if self.outermost:
             return self.model(x)
         else:   # add skip connections
-            return torch.cat([x, self.model(x)], 1)
+            return jt.concat([x, self.model(x)], 1)
 
 
 class NLayerDiscriminator(nn.Module):
@@ -560,7 +560,7 @@ class NLayerDiscriminator(nn.Module):
 
         kw = 4
         padw = 1
-        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]
+        sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2)]
         nf_mult = 1
         nf_mult_prev = 1
         for n in range(1, n_layers):  # gradually increase the number of filters
@@ -569,7 +569,7 @@ class NLayerDiscriminator(nn.Module):
             sequence += [
                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
                 norm_layer(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
+                nn.LeakyReLU(0.2)
             ]
 
         nf_mult_prev = nf_mult
@@ -577,14 +577,14 @@ class NLayerDiscriminator(nn.Module):
         sequence += [
             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
             norm_layer(ndf * nf_mult),
-            nn.LeakyReLU(0.2, True)
+            nn.LeakyReLU(0.2)
         ]
 
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
         self.model = nn.Sequential(*sequence)
 
-    def forward(self, input):
-        """Standard forward."""
+    def execute(self, input):
+        """Standard execute."""
         return self.model(input)
 
 
@@ -607,14 +607,14 @@ class PixelDiscriminator(nn.Module):
 
         self.net = [
             nn.Conv2d(input_nc, ndf, kernel_size=1, stride=1, padding=0),
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2),
             nn.Conv2d(ndf, ndf * 2, kernel_size=1, stride=1, padding=0, bias=use_bias),
             norm_layer(ndf * 2),
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2),
             nn.Conv2d(ndf * 2, 1, kernel_size=1, stride=1, padding=0, bias=use_bias)]
 
         self.net = nn.Sequential(*self.net)
 
-    def forward(self, input):
-        """Standard forward."""
+    def execute(self, input):
+        """Standard execute."""
         return self.net(input)

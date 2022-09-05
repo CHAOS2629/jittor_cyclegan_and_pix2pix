@@ -1,5 +1,5 @@
 # import torch
-import jittor
+import jittor as jt
 from .base_model import BaseModel
 from . import networks
 
@@ -63,11 +63,11 @@ class Pix2PixModel(BaseModel):
 
         if self.isTrain:
             # define loss functions
-            self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)
-            self.criterionL1 = jittor.nn.L1Loss()
+            self.criterionGAN = networks.GANLoss(opt.gan_mode)
+            self.criterionL1 = jt.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
-            self.optimizer_G = jittor.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D = jittor.optim.Adam(self.netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            self.optimizer_G = jt.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            self.optimizer_D = jt.optim.Adam(self.netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -80,49 +80,56 @@ class Pix2PixModel(BaseModel):
         The option 'direction' can be used to swap images in domain A and domain B.
         """
         AtoB = self.opt.direction == 'AtoB'
-        self.real_A = input['A' if AtoB else 'B'].to(self.device)
-        self.real_B = input['B' if AtoB else 'A'].to(self.device)
+        # print(type(input['A' if AtoB else 'B']))
+        # exit(0)
+        self.real_A = jt.array(input['A' if AtoB else 'B'].numpy())
+        self.real_B = jt.array(input['B' if AtoB else 'A'].numpy())
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
 
-    def forward(self):
+    def execute(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         self.fake_B = self.netG(self.real_A)  # G(A)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
         # Fake; stop backprop to the generator by detaching fake_B
-        fake_AB = jittor.concat((self.real_A, self.fake_B), 1)  # we use conditional GANs; we need to feed both input and output to the discriminator
+        fake_AB = jt.concat((self.real_A, self.fake_B), 1)  # we use conditional GANs; we need to feed both input and output to the discriminator
         pred_fake = self.netD(fake_AB.detach())
         self.loss_D_fake = self.criterionGAN(pred_fake, False)
         # Real
-        real_AB = jittor.concat((self.real_A, self.real_B), 1)
+        real_AB = jt.concat((self.real_A, self.real_B), 1)
         pred_real = self.netD(real_AB)
         self.loss_D_real = self.criterionGAN(pred_real, True)
         # combine loss and calculate gradients
         self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
-        self.loss_D.backward()
+        # print(type(self.loss_D))
+        # exit(0)
+        return(self.loss_D)
 
     def backward_G(self):
         """Calculate GAN and L1 loss for the generator"""
         # First, G(A) should fake the discriminator
-        fake_AB = jittor.concat((self.real_A, self.fake_B), 1)
+        fake_AB = jt.concat((self.real_A, self.fake_B), 1)
         pred_fake = self.netD(fake_AB)
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B
         self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
-        self.loss_G.backward()
+        # print(type(self.loss_G))
+        # exit(0)
+        return(self.loss_G)
 
     def optimize_parameters(self):
-        self.forward()                   # compute fake images: G(A)
+        self.execute()                   # compute fake images: G(A)
         # update D
+
         self.set_requires_grad(self.netD, True)  # enable backprop for D
-        self.optimizer_D.zero_grad()     # set D's gradients to zero
-        self.backward_D()                # calculate gradients for D
-        self.optimizer_D.step()          # update D's weights
+        # self.optimizer_D.zero_grad()     # set D's gradients to zero
+                        
+        self.optimizer_D.step(self.backward_D())   # calculate gradients for D       # update D's weights
         # update G
         self.set_requires_grad(self.netD, False)  # D requires no gradients when optimizing G
-        self.optimizer_G.zero_grad()        # set G's gradients to zero
-        self.backward_G()                   # calculate graidents for G
-        self.optimizer_G.step()             # udpate G's weights
+        # self.optimizer_G.zero_grad()        # set G's gradients to zero
+                           
+        self.optimizer_G.step(self.backward_G())   # calculate graidents for G      # udpate G's weights
