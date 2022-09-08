@@ -40,7 +40,7 @@
                       ngf: 64                            
                no_dropout: False                         
                   no_flip: False                         
-                  no_html: False                         
+                  no_html: True                          	[default: False]
                      norm: batch                         
               num_threads: 4                             
                 output_nc: 3                             
@@ -54,6 +54,7 @@
            serial_batches: False                         
                    suffix:                               
          update_html_freq: 1000                          
-                use_wandb: True                          	[default: False]
+                use_wandb: False                         
                   verbose: False                         
+       wandb_project_name: CycleGAN-and-pix2pix          
 ----------------- End -------------------
