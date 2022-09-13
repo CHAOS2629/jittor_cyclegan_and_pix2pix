@@ -1,5 +1,5 @@
 import os
-# import torch
+import torch
 import jittor as jt
 from collections import OrderedDict
 from abc import ABC, abstractmethod
@@ -159,7 +159,7 @@ class BaseModel(ABC):
                 #     net.cuda(self.gpu_ids[0])
                 # else:
                 #     
-                jt.save(net.cpu().state_dict(), save_path)
+                jt.save(net.state_dict(), save_path)
 
     def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
         """Fix InstanceNorm checkpoints incompatibility (prior to 0.4)"""
@@ -173,6 +173,7 @@ class BaseModel(ABC):
                (key == 'num_batches_tracked'):
                 state_dict.pop('.'.join(keys))
         else:
+            # breakpoint()
             self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)
 
     def load_networks(self, epoch):
@@ -183,22 +184,22 @@ class BaseModel(ABC):
         """
         for name in self.model_names:
             if isinstance(name, str):
-                load_filename = '%s_net_%s.pth' % (epoch, name)
+                load_filename = '%s_net_%s.pt' % (epoch, name)
                 load_path = os.path.join(self.save_dir, load_filename)
                 net = getattr(self, 'net' + name)
                 # if isinstance(net, torch.nn.DataParallel):
                 #     net = net.module
                 print('loading the model from %s' % load_path)
-                # if you are using PyTorch newer than 0.4 (e.g., built from
-                # GitHub source), you can remove str() on self.device
-                state_dict = jt.load(load_path, map_location=str(self.device))
-                if hasattr(state_dict, '_metadata'):
-                    del state_dict._metadata
+                # # if you are using PyTorch newer than 0.4 (e.g., built from
+                # # GitHub source), you can remove str() on self.device
+                # state_dict = jt.load(load_path)#, map_location=str(self.device)
+                # if hasattr(state_dict, '_metadata'):
+                #     del state_dict._metadata
 
-                # patch InstanceNorm checkpoints prior to 0.4
-                for key in list(state_dict.keys()):  # need to copy keys here because we mutate in loop
-                    self.__patch_instance_norm_state_dict(state_dict, net, key.split('.'))
-                net.load_state_dict(state_dict)
+                # # patch InstanceNorm checkpoints prior to 0.4
+                # for key in list(state_dict.keys()):  # need to copy keys here because we mutate in loop
+                #     self.__patch_instance_norm_state_dict(state_dict, net, key.split('.'))
+                net.load_state_dict(jt.load(load_path))
 
     def print_networks(self, verbose):
         """Print the total number of parameters in the network and (if verbose) network architecture

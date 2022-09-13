@@ -24,7 +24,7 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
 import jittor as jt
-
+import torch
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
@@ -35,6 +35,12 @@ if __name__ == '__main__':
     # print(opt)
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
+    # print(model.netG)
+    # print(model.netD)
+    # exit(0)
+    # model.netG.load_parameters(torch.load("/mnt/disk/pzh/pytorch-CycleGAN-and-pix2pix/saved_models/netG.pth"))
+    # model.netD.load_parameters(torch.load("/mnt/disk/pzh/pytorch-CycleGAN-and-pix2pix/saved_models/netD.pth"))
+    # exit(0)
     # print(model.netG)
     #python3.7 train.py --dataroot ./datasets/facades --name facades_pix2pix --model pix2pix --direction BtoA --display_id=-1 --no_html
     visualizer = Visualizer(opt)    #create a visualizer that display/save images and plots
@@ -54,6 +60,7 @@ if __name__ == '__main__':
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
             model.set_input(data)         # unpack data from dataset and apply preprocessing
+            # print(data)
             model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
 
             if total_iters % opt.display_freq == 0:   # display images on visdom and save images to a HTML file
