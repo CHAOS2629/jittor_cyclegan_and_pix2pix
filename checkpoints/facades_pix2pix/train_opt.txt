@@ -4,7 +4,7 @@
           checkpoints_dir: ./checkpoints                 
            continue_train: False                         
                 crop_size: 256                           
-                 dataroot: ./datasets/facades            	[default: None]
+                 dataroot: ./datasets/cityscapes         	[default: None]
              dataset_mode: aligned                       
                 direction: BtoA                          	[default: AtoB]
               display_env: main                          
